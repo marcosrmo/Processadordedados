@@ -503,6 +503,83 @@ def merge_records(all_records: list[dict]) -> list[dict]:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+#  PERGUNTAS INTERATIVAS DE FILTRO
+# ══════════════════════════════════════════════════════════════════════════════
+
+def perguntar(pergunta: str, padrao: bool = True) -> bool:
+    """
+    Exibe uma pergunta s/n no terminal e retorna True ou False.
+    O valor padrão é aplicado se o usuário pressionar Enter sem digitar nada.
+    """
+    opcoes = "[S/n]" if padrao else "[s/N]"
+    while True:
+        try:
+            resp = input(f"  {pergunta} {opcoes}: ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return padrao
+        if resp == "":
+            return padrao
+        if resp in ("s", "sim", "y", "yes"):
+            return True
+        if resp in ("n", "nao", "não", "no"):
+            return False
+        print("    Digite  s  para Sim  ou  n  para Não.")
+
+
+def perguntar_filtros() -> dict:
+    """
+    Pergunta ao usuário quais filtros deseja aplicar e retorna um dict
+    com as opções escolhidas.
+    """
+    SEP = "-" * 60
+    print(f"\n{SEP}")
+    print("  CONFIGURAÇÃO DOS FILTROS")
+    print(f"{SEP}")
+    print("  Responda s (sim) ou n (não) para cada filtro.")
+    print("  Pressionar Enter aceita a opção em MAIÚSCULA.\n")
+
+    opts: dict[str, bool] = {}
+
+    opts["sem_engano"] = perguntar(
+        "Remover registros com a palavra 'engano'?", padrao=True
+    )
+    opts["sem_falecido"] = perguntar(
+        "Remover registros com a palavra 'falecido'?", padrao=True
+    )
+    opts["somente_com_tel"] = perguntar(
+        "Manter somente registros COM telefone preenchido?", padrao=True
+    )
+    opts["sem_duplicatas"] = perguntar(
+        "Remover telefones duplicados (manter apenas 1 por número)?", padrao=True
+    )
+    opts["nome_obrigatorio"] = perguntar(
+        "Manter somente registros COM nome preenchido?", padrao=False
+    )
+    opts["adicionar_nove"] = perguntar(
+        "Adicionar o 9º dígito em celulares com 8 dígitos locais?", padrao=True
+    )
+
+    print(f"\n{SEP}")
+    print("  RESUMO DOS FILTROS ESCOLHIDOS")
+    print(f"{SEP}")
+    labels = {
+        "sem_engano":       "Remover 'engano'             ",
+        "sem_falecido":     "Remover 'falecido'           ",
+        "somente_com_tel":  "Somente com telefone         ",
+        "sem_duplicatas":   "Sem duplicatas               ",
+        "nome_obrigatorio": "Nome obrigatório             ",
+        "adicionar_nove":   "Adicionar 9º dígito          ",
+    }
+    for key, label in labels.items():
+        status = "✔  SIM" if opts[key] else "✘  NÃO"
+        print(f"  {label}: {status}")
+    print(f"{SEP}\n")
+
+    return opts
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 #  FILTROS DE EXPORTAÇÃO
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -514,44 +591,65 @@ def row_full_text(rec: dict) -> str:
     return " ".join(str(v) for v in rec.values() if v)
 
 
-def apply_filters(records: list[dict]) -> list[dict]:
+def apply_filters(records: list[dict], opts: dict) -> list[dict]:
     result      = []
     seen_phones = set()
 
     count_engano   = 0
     count_falecido = 0
     count_sem_tel  = 0
+    count_sem_nome = 0
     count_dup      = 0
 
     for rec in records:
         text = row_full_text(rec)
 
-        if ENGANO_RE.search(text):
+        # Filtro: sem engano
+        if opts.get("sem_engano") and ENGANO_RE.search(text):
             count_engano += 1
             continue
 
-        if FALECIDO_RE.search(text):
+        # Filtro: sem falecido
+        if opts.get("sem_falecido") and FALECIDO_RE.search(text):
             count_falecido += 1
             continue
 
+        # Filtro: nome obrigatório
+        if opts.get("nome_obrigatorio") and not rec.get("name", "").strip():
+            count_sem_nome += 1
+            continue
+
+        # Filtro: somente com telefone
         phone = rec.get("phone", "") or rec.get("phone2", "")
         phone = only_digits(phone)
-        if not phone:
+        if opts.get("somente_com_tel") and not phone:
             count_sem_tel += 1
             continue
 
-        norm = add_nine_digit(phone)
-        if norm in seen_phones:
-            count_dup += 1
-            continue
-        seen_phones.add(norm)
+        # Filtro: sem duplicatas
+        if opts.get("sem_duplicatas") and phone:
+            norm = add_nine_digit(phone)
+            if norm in seen_phones:
+                count_dup += 1
+                continue
+            seen_phones.add(norm)
+        elif phone:
+            # Mesmo sem filtro de duplicatas, registra o número para o dígito 9
+            seen_phones.add(add_nine_digit(phone))
 
         result.append(rec)
 
-    print(f"  Removidos por ENGANO        : {count_engano}")
-    print(f"  Removidos por FALECIDO      : {count_falecido}")
-    print(f"  Removidos SEM TELEFONE      : {count_sem_tel}")
-    print(f"  Removidos DUPLICADOS        : {count_dup}")
+    # Relatório
+    if opts.get("sem_engano"):
+        print(f"  Removidos por ENGANO        : {count_engano}")
+    if opts.get("sem_falecido"):
+        print(f"  Removidos por FALECIDO      : {count_falecido}")
+    if opts.get("nome_obrigatorio"):
+        print(f"  Removidos SEM NOME          : {count_sem_nome}")
+    if opts.get("somente_com_tel"):
+        print(f"  Removidos SEM TELEFONE      : {count_sem_tel}")
+    if opts.get("sem_duplicatas"):
+        print(f"  Removidos DUPLICADOS        : {count_dup}")
 
     return result
 
@@ -697,18 +795,23 @@ def main():
     merged = merge_records(all_records)
     print(f"  Após merge: {len(merged)} registros únicos ({total_rows_read - len(merged)} mesclados)")
 
+    # ── Perguntar filtros interativamente ─────────────────────────────────────
+    opts = perguntar_filtros()
+
     # Filtros de exportação
-    print("\nAplicando filtros:")
-    filtered = apply_filters(merged)
+    print("Aplicando filtros:")
+    filtered = apply_filters(merged, opts)
     print(f"  Registros finais: {len(filtered)}")
 
     if not filtered:
         print("\nNenhum registro após os filtros. Planilha não gerada.")
         sys.exit(0)
 
-    # Adicionar 9º dígito
-    filtered, nine_count = apply_nine_digit(filtered)
-    print(f"  Dígito 9 adicionado em: {nine_count} telefone(s)")
+    # Adicionar 9º dígito (somente se o filtro foi habilitado)
+    nine_count = 0
+    if opts.get("adicionar_nove"):
+        filtered, nine_count = apply_nine_digit(filtered)
+        print(f"  Dígito 9 adicionado em: {nine_count} telefone(s)")
 
     # Gerar XLSX
     timestamp   = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")

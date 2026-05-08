@@ -110,15 +110,33 @@ O script detecta os campos pelo **nome do cabeçalho** da planilha. Funciona com
 
 ---
 
-## Filtros aplicados
+## Filtros interativos
 
-| Filtro | O que faz |
-|--------|-----------|
-| Sem Engano | Remove linhas que contenham a palavra "engano" em qualquer campo |
-| Sem Falecido | Remove linhas que contenham a palavra "falecido" em qualquer campo |
-| Somente com Telefone | Remove registros sem nenhum número de telefone preenchido |
-| Sem Duplicatas | Mantém apenas um registro por número de telefone |
-| Dígito 9 | Adiciona o 9 em celulares com 10 dígitos (DDD + 8 dígitos locais iniciados em 6–9) |
+Após ler os arquivos, o script faz **6 perguntas** no terminal. Para cada uma, responda `s` (sim) ou `n` (não) e pressione Enter. Pressionar Enter sem digitar nada aceita a opção em maiúscula (o padrão recomendado).
+
+```
+------------------------------------------------------------
+  CONFIGURAÇÃO DOS FILTROS
+------------------------------------------------------------
+  Responda s (sim) ou n (não) para cada filtro.
+  Pressionar Enter aceita a opção em MAIÚSCULA.
+
+  Remover registros com a palavra 'engano'? [S/n]:
+  Remover registros com a palavra 'falecido'? [S/n]:
+  Manter somente registros COM telefone preenchido? [S/n]:
+  Remover telefones duplicados (manter apenas 1 por número)? [S/n]:
+  Manter somente registros COM nome preenchido? [s/N]:
+  Adicionar o 9º dígito em celulares com 8 dígitos locais? [S/n]:
+```
+
+| Filtro | Padrão | O que faz |
+|--------|--------|-----------|
+| Remover 'engano' | **SIM** | Remove linhas que contenham a palavra "engano" em qualquer campo |
+| Remover 'falecido' | **SIM** | Remove linhas que contenham a palavra "falecido" em qualquer campo |
+| Somente com telefone | **SIM** | Remove registros sem nenhum número de telefone preenchido |
+| Sem duplicatas | **SIM** | Mantém apenas um registro por número de telefone |
+| Nome obrigatório | **NÃO** | Remove registros sem nome preenchido |
+| Adicionar 9º dígito | **SIM** | Adiciona o 9 em celulares com 10 dígitos (DDD + 8 dígitos locais iniciados em 6–9) |
 
 ---
 
