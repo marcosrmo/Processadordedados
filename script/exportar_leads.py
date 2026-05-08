@@ -550,9 +550,17 @@ def perguntar_filtros() -> dict:
     opts["somente_com_tel"] = perguntar(
         "Manter somente registros COM telefone preenchido?", padrao=True
     )
-    opts["sem_duplicatas"] = perguntar(
-        "Remover telefones duplicados (manter apenas 1 por número)?", padrao=True
+
+    print()
+    print("  -- Deduplicação de telefone (pode ativar os dois juntos) --")
+    opts["dup_exato"] = perguntar(
+        "Remover duplicatas por telefone EXATO (dígitos idênticos)?", padrao=True
     )
+    opts["dup_nove"] = perguntar(
+        "Remover duplicatas considerando 9º dígito (11 9xxxx = 11 xxxx)?", padrao=True
+    )
+
+    print()
     opts["nome_obrigatorio"] = perguntar(
         "Manter somente registros COM nome preenchido?", padrao=False
     )
@@ -564,12 +572,13 @@ def perguntar_filtros() -> dict:
     print("  RESUMO DOS FILTROS ESCOLHIDOS")
     print(f"{SEP}")
     labels = {
-        "sem_engano":       "Remover 'engano'             ",
-        "sem_falecido":     "Remover 'falecido'           ",
-        "somente_com_tel":  "Somente com telefone         ",
-        "sem_duplicatas":   "Sem duplicatas               ",
-        "nome_obrigatorio": "Nome obrigatório             ",
-        "adicionar_nove":   "Adicionar 9º dígito          ",
+        "sem_engano":       "Remover 'engano'                    ",
+        "sem_falecido":     "Remover 'falecido'                  ",
+        "somente_com_tel":  "Somente com telefone                ",
+        "dup_exato":        "Sem duplicatas (telefone exato)     ",
+        "dup_nove":         "Sem duplicatas (com 9º dígito)      ",
+        "nome_obrigatorio": "Nome obrigatório                    ",
+        "adicionar_nove":   "Adicionar 9º dígito                 ",
     }
     for key, label in labels.items():
         status = "✔  SIM" if opts[key] else "✘  NÃO"
@@ -592,14 +601,18 @@ def row_full_text(rec: dict) -> str:
 
 
 def apply_filters(records: list[dict], opts: dict) -> list[dict]:
-    result      = []
-    seen_phones = set()
+    result = []
+
+    # Conjuntos separados para cada modo de deduplicação
+    seen_exact:     set[str] = set()   # dígitos crus, sem normalização
+    seen_canonical: set[str] = set()   # canonical: remove o 9 de 11 dígitos
 
     count_engano   = 0
     count_falecido = 0
     count_sem_tel  = 0
     count_sem_nome = 0
-    count_dup      = 0
+    count_dup_exato = 0
+    count_dup_nove  = 0
 
     for rec in records:
         text = row_full_text(rec)
@@ -619,37 +632,49 @@ def apply_filters(records: list[dict], opts: dict) -> list[dict]:
             count_sem_nome += 1
             continue
 
+        # Obtém o telefone principal normalizado (só dígitos)
+        phone = only_digits(rec.get("phone", "") or rec.get("phone2", ""))
+
         # Filtro: somente com telefone
-        phone = rec.get("phone", "") or rec.get("phone2", "")
-        phone = only_digits(phone)
         if opts.get("somente_com_tel") and not phone:
             count_sem_tel += 1
             continue
 
-        # Filtro: sem duplicatas
-        if opts.get("sem_duplicatas") and phone:
-            norm = add_nine_digit(phone)
-            if norm in seen_phones:
-                count_dup += 1
+        # ── Deduplicação: telefone EXATO ─────────────────────────────────────
+        # Compara os dígitos crus, sem adicionar nem remover nada.
+        # Ex: 11971234567 ≠ 1171234567  (são tratados como distintos)
+        if opts.get("dup_exato") and phone:
+            if phone in seen_exact:
+                count_dup_exato += 1
                 continue
-            seen_phones.add(norm)
-        elif phone:
-            # Mesmo sem filtro de duplicatas, registra o número para o dígito 9
-            seen_phones.add(add_nine_digit(phone))
+            seen_exact.add(phone)
+
+        # ── Deduplicação: telefone + 9º dígito ───────────────────────────────
+        # Normaliza removendo o 9 central de celulares com 11 dígitos antes
+        # de comparar. Isso faz com que 11971234567 e 1171234567 sejam
+        # considerados o mesmo número.
+        if opts.get("dup_nove") and phone:
+            canon = canonical_phone(phone)   # remove 9 se tiver 11 dígitos
+            if canon in seen_canonical:
+                count_dup_nove += 1
+                continue
+            seen_canonical.add(canon)
 
         result.append(rec)
 
-    # Relatório
+    # ── Relatório ────────────────────────────────────────────────────────────
     if opts.get("sem_engano"):
-        print(f"  Removidos por ENGANO        : {count_engano}")
+        print(f"  Removidos por ENGANO              : {count_engano}")
     if opts.get("sem_falecido"):
-        print(f"  Removidos por FALECIDO      : {count_falecido}")
+        print(f"  Removidos por FALECIDO            : {count_falecido}")
     if opts.get("nome_obrigatorio"):
-        print(f"  Removidos SEM NOME          : {count_sem_nome}")
+        print(f"  Removidos SEM NOME                : {count_sem_nome}")
     if opts.get("somente_com_tel"):
-        print(f"  Removidos SEM TELEFONE      : {count_sem_tel}")
-    if opts.get("sem_duplicatas"):
-        print(f"  Removidos DUPLICADOS        : {count_dup}")
+        print(f"  Removidos SEM TELEFONE            : {count_sem_tel}")
+    if opts.get("dup_exato"):
+        print(f"  Removidos DUPLICADOS (exato)      : {count_dup_exato}")
+    if opts.get("dup_nove"):
+        print(f"  Removidos DUPLICADOS (com 9)      : {count_dup_nove}")
 
     return result
 

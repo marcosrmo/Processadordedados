@@ -124,7 +124,11 @@ Após ler os arquivos, o script faz **6 perguntas** no terminal. Para cada uma, 
   Remover registros com a palavra 'engano'? [S/n]:
   Remover registros com a palavra 'falecido'? [S/n]:
   Manter somente registros COM telefone preenchido? [S/n]:
-  Remover telefones duplicados (manter apenas 1 por número)? [S/n]:
+
+  -- Deduplicação de telefone (pode ativar os dois juntos) --
+  Remover duplicatas por telefone EXATO (dígitos idênticos)? [S/n]:
+  Remover duplicatas considerando 9º dígito (11 9xxxx = 11 xxxx)? [S/n]:
+
   Manter somente registros COM nome preenchido? [s/N]:
   Adicionar o 9º dígito em celulares com 8 dígitos locais? [S/n]:
 ```
@@ -134,9 +138,12 @@ Após ler os arquivos, o script faz **6 perguntas** no terminal. Para cada uma, 
 | Remover 'engano' | **SIM** | Remove linhas que contenham a palavra "engano" em qualquer campo |
 | Remover 'falecido' | **SIM** | Remove linhas que contenham a palavra "falecido" em qualquer campo |
 | Somente com telefone | **SIM** | Remove registros sem nenhum número de telefone preenchido |
-| Sem duplicatas | **SIM** | Mantém apenas um registro por número de telefone |
+| Sem duplicatas (exato) | **SIM** | Remove registros com o número de telefone **idêntico** (dígito a dígito). Ex: `11971234567` e `1171234567` são considerados **diferentes** |
+| Sem duplicatas (com 9) | **SIM** | Remove registros onde o telefone é o **mesmo número com ou sem o 9**. Ex: `11971234567` e `1171234567` são considerados **iguais** e um é removido |
 | Nome obrigatório | **NÃO** | Remove registros sem nome preenchido |
 | Adicionar 9º dígito | **SIM** | Adiciona o 9 em celulares com 10 dígitos (DDD + 8 dígitos locais iniciados em 6–9) |
+
+> **Dica:** Ative os dois modos de deduplicação juntos para a limpeza mais completa possível.
 
 ---
 
