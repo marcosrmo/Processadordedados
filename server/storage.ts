@@ -139,6 +139,9 @@ const FIELD_MAP = {
     "telefone", "tel", "fone", "phone", "ramal", "fax",
     "contato", "tel 1", "telefone 1", "numero",
     "telefone fixo", "tel fixo", "fixo", "residencial",
+    "telefone do cliente", "tel do cliente", "fone do cliente",
+    "telefone cliente", "tel cliente", "nr telefone", "num telefone",
+    "numero telefone", "telefone comercial", "tel comercial",
   ],
   phone2: [
     "celular", "cel", "movel", "mobile", "telefonecelular", "telcel",
@@ -156,10 +159,9 @@ const FIELD_MAP = {
     "telefone4", "tel4", "fone4", "phone4", "tel 4", "telefone 4",
     "celular4", "cel4", "whatsapp4", "fone 4", "contato4",
   ],
-  // ← NOVO: DDD em coluna separada da planilha de entrada
   ddd: [
-    "ddd", "cod area", "codigo area", "codigo de area",
-    "area code", "areacode", "prefixo", "cod. area",
+    "ddd", "dd", "cod area", "codigo area", "codigo de area",
+    "area code", "areacode", "prefixo", "cod. area", "cod ddd",
   ],
   email: [
     "email", "e-mail", "mail", "correio", "emailaddress", "email address",
@@ -185,6 +187,7 @@ const FIELD_MAP = {
     "valornota", "valorpedido", "valorcompra", "valortotal",
     "total pedido", "total nota", "nf valor", "nota fiscal valor",
     "preco total", "preco unitario", "valor unitario", "vl unitario",
+    "maior compra", "melhor compra", "vl compra", "valor da compra",
   ],
   purchaseDate: [
     "data compra", "datacompra", "data", "dt", "data venda", "datavenda",

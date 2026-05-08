@@ -1,152 +1,200 @@
 # Guia de Exportação Local — DataForge
 
-Este guia explica como rodar o script `script/exportar_leads.py` localmente no VS Code para gerar uma planilha `.xlsx` com os leads filtrados diretamente do banco de dados.
+Use o script `exportar_leads.py` para processar suas planilhas **diretamente no seu computador**, sem precisar de banco de dados nem de conexão com a internet.
 
 ---
 
-## Pré-requisitos
+## O que o script faz
 
-- **Python 3.8 ou superior** — [python.org](https://www.python.org/downloads/)
-- **pip** (geralmente já vem com o Python)
-- Acesso ao banco PostgreSQL (string de conexão `DATABASE_URL`)
+1. Lê todos os arquivos da pasta `input/` (CSV, XLSX, XLS, TXT)
+2. Detecta automaticamente os campos de cada planilha (telefone, nome, CPF, cidade, etc.)
+3. Normaliza os números de telefone (remove pontos, traços, parênteses)
+4. Concatena o DDD ao número quando estiver em coluna separada
+5. Mescla registros duplicados entre arquivos (por CPF, CNPJ ou telefone+nome)
+6. Remove registros com a palavra "engano" ou "falecido"
+7. Remove registros sem telefone
+8. Remove telefones duplicados
+9. Adiciona o 9º dígito em celulares com 8 dígitos locais
+10. Gera uma planilha `.xlsx` com data e hora no nome, dentro de `exports/`
 
 ---
 
-## 1. Instalar as dependências Python
+## Instalação (apenas na primeira vez)
 
-Na raiz do projeto, execute:
+### Pré-requisito: Python 3.8 ou superior
+
+Verifique com:
+```bash
+python --version
+# ou
+python3 --version
+```
+
+### Instalar as dependências
+
+No terminal, dentro da pasta do projeto:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Se ainda não existir o arquivo `requirements.txt`, instale manualmente:
-
-```bash
-pip install psycopg2-binary openpyxl python-dotenv
-```
-
----
-
-## 2. Configurar o arquivo `.env`
-
-Crie (ou edite) o arquivo `.env` na **raiz do projeto** com o seguinte conteúdo:
-
-```env
-DATABASE_URL=postgresql://usuario:senha@host:porta/nome_do_banco
-```
-
-Exemplo real:
-
-```env
-DATABASE_URL=postgresql://admin:minhasenha@db.supabase.co:5432/postgres
-```
-
-> O script lê esse arquivo automaticamente. Nunca commite o `.env` no Git — ele já está no `.gitignore`.
+As bibliotecas instaladas são:
+- `pandas` — leitura de tabelas
+- `openpyxl` — ler/escrever arquivos XLSX
+- `xlrd` — ler arquivos XLS antigos
+- `chardet` — detectar encoding de arquivos CSV
 
 ---
 
-## 3. Rodar o script no VS Code
+## Como usar
 
-Abra um terminal integrado no VS Code (`Ctrl+` `` ` ``) e execute:
+### 1. Coloque seus arquivos na pasta `input/`
+
+Formatos aceitos:
+
+| Extensão | Descrição |
+|----------|-----------|
+| `.csv`   | CSV separado por `,`, `;`, `\|` ou tabulação |
+| `.txt`   | TXT com colunas separadas por `;` ou `,` |
+| `.xlsx`  | Excel moderno |
+| `.xls`   | Excel antigo (97-2003) |
+
+Você pode colocar **vários arquivos** ao mesmo tempo — o script lê todos e mescla os registros.
+
+### 2. Execute o script
 
 ```bash
-python script/exportar_leads.py
-```
+# Windows
+python script\exportar_leads.py
 
-Ou, se tiver múltiplas versões do Python:
-
-```bash
+# Linux / Mac
 python3 script/exportar_leads.py
 ```
 
+### 3. Abra a planilha gerada
+
+O resultado fica em `exports/` com o nome no formato:
+```
+leads_2026-05-08_15-23-30.xlsx
+```
+
 ---
 
-## 4. O que cada filtro faz
+## Campos reconhecidos automaticamente
 
-O script aplica os seguintes filtros **automaticamente**, sem precisar configurar nada:
+O script detecta os campos pelo **nome do cabeçalho** da planilha. Funciona com qualquer das variações abaixo:
+
+| Campo exportado    | Exemplos de nome de coluna aceitos |
+|--------------------|------------------------------------|
+| Telefone 1         | Telefone, Tel, Fone, Telefone do Cliente, Nr Telefone, Telefone Comercial |
+| Telefone 2         | Celular, Cel, WhatsApp, Zap, Tel 2, Celular1 |
+| Telefone 3         | Tel 3, Celular3, Fone3 |
+| Telefone 4         | Tel 4, Celular4, Fone4 |
+| DDD                | DDD, DD, Cód. Área, Prefixo |
+| Nome               | Nome, Nome do Cliente, Cliente, Razão Social |
+| CPF                | CPF, CPF do Cliente |
+| CNPJ               | CNPJ, CGC |
+| CPF/CNPJ (misto)   | CPF/CNPJ, Documento, Doc |
+| Email              | Email, E-mail, Mail |
+| Logradouro         | Endereço, Rua, Avenida, Logradouro |
+| Cidade             | Cidade, Município, Localidade |
+| UF                 | UF, Estado, Sigla |
+| CEP                | CEP, ZIP |
+| Ticket Médio       | Faturamento, Valor, Maior Compra, Ticket Médio |
+| Dt. Últ. Compra    | Data, Data Compra, Data Venda, Dt. Ult. Compra |
+| Produto            | Produto, Mercadoria, Item, Descrição |
+| Quantidade         | Quantidade, Qtd, Qty |
+
+> **Dica:** O script ignora maiúsculas, acentos e espaços extras nos nomes das colunas.  
+> `"TELEFONE DO CLIENTE"`, `"Telefone do cliente"` e `"telefone_do_cliente"` são tratados da mesma forma.
+
+---
+
+## Filtros aplicados
 
 | Filtro | O que faz |
-|---|---|
-| **Sem Engano** | Exclui registros que contenham a palavra "engano" em qualquer campo |
-| **Sem Falecido** | Exclui registros que contenham a palavra "falecido" em qualquer campo |
-| **Somente com Telefone** | Exclui registros sem telefone ou celular preenchido |
-| **Sem duplicatas de telefone** | Mantém apenas o primeiro registro encontrado por número de telefone |
-| **Dígito 9 automático** | Adiciona o 9 dígito em celulares com 8 dígitos locais (ex: `62 9999-1234` → `62 99999-1234`) |
-
-> Todos os outros filtros opcionais da interface web (cidade, UF, produto, etc.) **não são aplicados** pelo script — ele exporta todos os leads que passam pelos 4 filtros acima.
+|--------|-----------|
+| Sem Engano | Remove linhas que contenham a palavra "engano" em qualquer campo |
+| Sem Falecido | Remove linhas que contenham a palavra "falecido" em qualquer campo |
+| Somente com Telefone | Remove registros sem nenhum número de telefone preenchido |
+| Sem Duplicatas | Mantém apenas um registro por número de telefone |
+| Dígito 9 | Adiciona o 9 em celulares com 10 dígitos (DDD + 8 dígitos locais iniciados em 6–9) |
 
 ---
 
-## 5. Exemplo de saída
-
-Ao executar o script, você verá no terminal:
+## Exemplo de saída no terminal
 
 ```
-Conectando ao banco de dados...
-Conexão estabelecida com sucesso.
-Buscando registros...
-Total de registros no banco (ativos): 45823
+============================================================
+  DataForge — Exportação Local de Leads
+============================================================
 
-Resultado dos filtros:
-  Removidos por ENGANO     : 124
-  Removidos por FALECIDO   : 37
-  Removidos SEM TELEFONE   : 8901
-  Removidos DUPLICADOS     : 3412
-  Registros finais         : 33349
-  Dígito 9 adicionado em   : 6204 telefone(s)
+Pasta de entrada : /home/user/dataforge/input
+Pasta de saída   : /home/user/dataforge/exports
 
-Planilha gerada com sucesso:
-  /caminho/para/exports/leads_2026-05-08_14-30-22.xlsx
-  33349 registros exportados
+Arquivos encontrados: 2
+  - clientes_jan.csv
+  - base_sul.xlsx
+
+Lendo: clientes_jan.csv
+  Linhas lidas      : 5000
+  Registros válidos : 5000
+
+Lendo: base_sul.xlsx
+  Linhas lidas      : 3756
+  Registros válidos : 3756
+
+Total lido de todos os arquivos: 8756 registros
+
+Mesclando registros duplicados entre arquivos...
+  Após merge: 8512 registros únicos (244 mesclados)
+
+Aplicando filtros:
+  Removidos por ENGANO        : 0
+  Removidos por FALECIDO      : 7
+  Removidos SEM TELEFONE      : 0
+  Removidos DUPLICADOS        : 12
+  Registros finais: 8493
+  Dígito 9 adicionado em: 9 telefone(s)
+
+Gerando planilha...
+
+============================================================
+  Planilha gerada com sucesso!
+  Arquivo : leads_2026-05-08_15-23-30.xlsx
+  Local   : /home/user/dataforge/exports/leads_2026-05-08_15-23-30.xlsx
+  Total   : 8493 registros
+============================================================
 ```
 
-A planilha é salva automaticamente na pasta `exports/` com data e hora no nome.
+---
+
+## Estrutura de pastas
+
+```
+dataforge/
+├── input/              ← Coloque seus arquivos aqui
+│   ├── clientes.csv
+│   └── base_sul.xlsx
+├── exports/            ← Planilhas geradas ficam aqui
+│   └── leads_2026-05-08_15-23-30.xlsx
+├── script/
+│   └── exportar_leads.py
+└── requirements.txt
+```
 
 ---
 
-## 6. Colunas exportadas
+## Dúvidas frequentes
 
-A planilha gerada contém as seguintes colunas, na mesma ordem da interface web:
+**O script pode ler vários arquivos ao mesmo tempo?**  
+Sim. Coloque quantos arquivos quiser na pasta `input/` — todos serão lidos, mesclados e filtrados juntos.
 
-| Coluna | Campo |
-|---|---|
-| Telefone 1 | `phone` |
-| Telefone 2 | `phone2` |
-| Telefone 3 | `phone3` |
-| Telefone 4 | `phone4` |
-| DDD | `ddd` |
-| Nome | `name` |
-| CPF | `cpf` |
-| CNPJ | `cnpj` |
-| Email | `email` |
-| Logradouro | `address` |
-| Número | `number` |
-| Complemento | `complement` |
-| Bairro | `neighborhood` |
-| Cidade | `city` |
-| UF | `state` |
-| CEP | `cep` |
-| Dt. Últ. Compra | `purchase_date` |
-| Produto | `produto` |
-| Quantidade | `quantidade` |
-| Ticket Médio | `ticket_average` |
+**E se minha planilha tiver nomes de colunas diferentes dos listados?**  
+Renomeie a coluna para um dos nomes aceitos (veja a tabela acima). O script não exige formato exato, mas a coluna precisa conter ao menos uma das palavras-chave reconhecidas.
 
----
+**O arquivo de entrada é apagado após o processamento?**  
+Não. O script apenas lê os arquivos de `input/` e grava o resultado em `exports/`. Seus arquivos originais não são modificados.
 
-## Solução de problemas
-
-**`ModuleNotFoundError: No module named 'psycopg2'`**
-→ Execute: `pip install psycopg2-binary`
-
-**`ModuleNotFoundError: No module named 'openpyxl'`**
-→ Execute: `pip install openpyxl`
-
-**`ERRO: variável DATABASE_URL não definida`**
-→ Verifique se o arquivo `.env` existe na raiz do projeto e contém `DATABASE_URL=...`
-
-**`ERRO ao conectar ao banco`**
-→ Verifique se a `DATABASE_URL` está correta e se o banco está acessível (teste de conexão no DBeaver, psql, etc.)
-
-**Planilha gerada mas vazia (0 registros)**
-→ Todos os registros foram filtrados. Verifique se há registros ativos no banco (sem `deleted_at`).
+**Posso usar no Windows?**  
+Sim, funciona em Windows, Linux e Mac. No Windows use `python` em vez de `python3`.
