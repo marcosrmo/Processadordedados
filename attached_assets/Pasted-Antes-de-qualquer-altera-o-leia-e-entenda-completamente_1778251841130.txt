@@ -1,0 +1,56 @@
+Antes de qualquer alteração, leia e entenda completamente o projeto: estrutura de pastas, server/storage.ts, server/fileProcessor.ts, shared/schema.ts e a documentação existente (ARCHITECTURE.md ou replit.md). Entenda o fluxo completo de upload → parse → INSERT no banco.
+REGRA OBRIGATÓRIA: Não suponha nada. Leia o código real antes de cada alteração. Após cada implementação, teste de verdade — rode o código, verifique o resultado, confirme que funciona antes de passar para o próximo item. Se algo falhar, corrija e teste novamente antes de continuar.
+Depois de entender e verificar o projeto, implemente as seguintes melhorias:
+1. Normalização de telefone
+Leia onde os dados são inseridos no banco. Localize a função exata. Na função que prepara os dados antes do INSERT, normalizar todos os campos mapeados como telefone, celular, whatsapp e ddd: remover tudo que não seja dígito (0-9). Exemplos:
+
+(62) 9991-4226 → 6299914226
+62 9991.4226 → 6299914226
+ABC62 9991 → 6299991
+62-9991-4226a → 6299914226
+Teste com um arquivo real antes de continuar.
+
+2. Concatenação de DDD
+Leia o schema e o código de mapeamento de colunas. Se houver coluna ddd separada na planilha, concatenar com telefone ou celular na linha correspondente antes de gravar no banco. Exemplo: coluna A = 62, coluna B = 999142263 → gravar 62999142263. Se o número já tiver DDD (10+ dígitos), não duplicar. Teste com uma planilha que tenha DDD separado.
+3. Filtros granulares na exportação
+Leia o código atual de exportação e filtros. Separar os filtros de exclusão em opções individuais independentes:
+
+Filtro: Sem Engano (exclui registros marcados como engano)
+Filtro: Sem Falecido (exclui registros marcados como falecido)
+Filtro: Somente com Telefone (exclui registros sem telefone/celular preenchido)
+Filtro: Sem telefones duplicados (mantém apenas um registro por número)
+Teste cada filtro individualmente e confirme que retorna resultado correto.
+
+4. Script Python executável
+Criar o arquivo script/exportar_leads.py dentro do projeto que:
+
+Leia a DATABASE_URL do arquivo .env na raiz do projeto
+Conecte ao banco e verifique a conexão antes de continuar
+Aplique automaticamente os filtros: sem engano, sem falecido, somente com telefone, remove duplicatas de telefone
+Adicione o dígito 9 automaticamente em celulares com 8 dígitos (sem o 9)
+Ignore todos os outros filtros opcionais
+Gere uma planilha .xlsx final na pasta exports/ com data e hora no nome
+Seja executável localmente no VS Code com python script/exportar_leads.py
+Teste rodando o script e confirme que a planilha é gerada corretamente.
+
+5. Guia de uso local
+Criar o arquivo GUIA_EXPORTACAO_LOCAL.md explicando:
+
+Pré-requisitos (Python 3, pip, bibliotecas necessárias)
+Como instalar as dependências com pip install -r requirements.txt
+Como configurar o .env com a DATABASE_URL
+Como rodar o script no VS Code
+O que cada filtro faz
+Exemplo de saída gerada
+
+6. Atualizar documentação
+Atualizar o ARCHITECTURE.md incluindo:
+
+Regra de normalização de telefone
+Regra de concatenação de DDD
+Descrição dos novos filtros granulares
+Descrição do script Python e guia local
+Informação que o sistema roda em VPS KingHost com 4GB RAM, 50GB SSD, 2 CPUs
+Parâmetro atual de heap do Node.js (--max-old-space-size=512)
+
+Ao final, confirme explicitamente quais itens foram testados, como foram testados e qual foi o resultado de cada teste.
